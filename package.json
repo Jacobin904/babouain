@@ -2,14 +2,14 @@
 {
   "name": "babouain-discord-bot",
   "version": "1.0.0",
-  "description": "Discord bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.0.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "canvas": "^3.2.0"
   },
   "private": true
 }
