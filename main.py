@@ -8,9 +8,9 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# =========================
-# CONFIGURATION DES RÔLES
-# =========================
+# =====================================
+# CONFIGURATION
+# =====================================
 
 ROLES = [
     ("Fondateur", 0xE74C3C),
@@ -44,17 +44,13 @@ ROLES = [
     ("Autres jeux", 0x95A5A6),
 ]
 
-# =========================
-# CONFIGURATION DES SALONS
-# =========================
-
 CHANNELS = {
     "INFORMATIONS": [
         "accueil",
         "règlements",
         "annonces",
         "rôles",
-        "présentation"
+        "présentation",
     ],
     "COMMUNAUTÉ": [
         "général",
@@ -63,14 +59,14 @@ CHANNELS = {
         "médias",
         "memes",
         "photos-et-vidéos",
-        "suggestions"
+        "suggestions",
     ],
     "RENCONTRES": [
         "faire-connaissance",
         "recherche-damis",
         "rencontres",
         "présentation-personnelle",
-        "recherche-de-groupe"
+        "recherche-de-groupe",
     ],
     "GAMING": [
         "gaming-général",
@@ -79,26 +75,26 @@ CHANNELS = {
         "minecraft",
         "fortnite",
         "gta-v",
-        "autres-jeux"
+        "autres-jeux",
     ],
     "DIVERTISSEMENT": [
         "musique",
         "vidéos",
         "sondages",
-        "clips-gaming"
+        "clips-gaming",
     ],
     "SUPPORT": [
         "assistance",
         "signalements",
-        "tickets"
-    ]
+        "tickets",
+    ],
 }
 
 STAFF_CHANNELS = [
     "staff-chat",
     "staff-annonces",
     "logs",
-    "dossiers-membres"
+    "dossiers-membres",
 ]
 
 STAFF_ROLES = [
@@ -109,24 +105,58 @@ STAFF_ROLES = [
     "Modérateur",
     "Assistant-Modérateur",
     "Responsable Communauté",
-    "Responsable Événements"
+    "Responsable Événements",
 ]
 
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="!", intents=intents)
+
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents
+)
 
 
-# =========================
-# VÉRIFICATION ADMIN
-# =========================
+# =====================================
+# OUTILS
+# =====================================
 
 def is_admin(interaction):
     return interaction.user.guild_permissions.administrator
 
 
-# =========================
+def is_voice(channel):
+    return isinstance(
+        channel,
+        (discord.VoiceChannel, discord.StageChannel)
+    )
+
+
+def get_protected_channels(guild):
+    """
+    Les salons obligatoires des serveurs Communauté
+    ne doivent jamais être supprimés.
+    """
+
+    protected = {}
+
+    if guild.rules_channel:
+        protected[guild.rules_channel.id] = (
+            "INFORMATIONS",
+            "règlements"
+        )
+
+    if guild.public_updates_channel:
+        protected[guild.public_updates_channel.id] = (
+            "INFORMATIONS",
+            "annonces"
+        )
+
+    return protected
+
+
+# =====================================
 # APERÇU
-# =========================
+# =====================================
 
 @bot.tree.command(
     name="apercu",
@@ -144,38 +174,43 @@ async def apercu(interaction: discord.Interaction):
 
     guild = interaction.guild
 
-    missing_roles = [
-        name for name, color in ROLES
-        if discord.utils.get(guild.roles, name=name) is None
-    ]
+    protected = get_protected_channels(guild)
 
     non_voice = [
-        channel for channel in guild.channels
-        if not isinstance(channel, discord.VoiceChannel)
+        c for c in guild.channels
+        if not is_voice(c)
+        and not isinstance(c, discord.CategoryChannel)
     ]
 
-    text_count = sum(
+    missing_roles = [
+        name for name, color in ROLES
+        if not discord.utils.get(guild.roles, name=name)
+    ]
+
+    new_channels = sum(
         len(channels) for channels in CHANNELS.values()
     ) + len(STAFF_CHANNELS)
 
     await interaction.response.send_message(
-        f"**Aperçu de Zone Québec**\n\n"
-        f"Salons non vocaux à supprimer : {len(non_voice)}\n"
-        f"Salons vocaux à conserver : {len(guild.voice_channels)}\n"
-        f"Rôles manquants à créer : {len(missing_roles)}\n"
-        f"Nouveaux salons textuels : {text_count}\n\n"
-        f"Aucun rôle existant ne sera supprimé.",
+        f"**ZONE QUÉBEC — APERÇU**\n\n"
+        f"Salons textuels existants : {len(non_voice)}\n"
+        f"Salons obligatoires protégés : {len(protected)}\n"
+        f"Salons vocaux conservés : "
+        f"{sum(is_voice(c) for c in guild.channels)}\n"
+        f"Rôles manquants : {len(missing_roles)}\n"
+        f"Nouveaux salons prévus : {new_channels}\n\n"
+        "**Aucun rôle existant ne sera supprimé.**",
         ephemeral=True
     )
 
 
-# =========================
+# =====================================
 # RECONSTRUCTION
-# =========================
+# =====================================
 
 @bot.tree.command(
     name="reconstruire",
-    description="Reconstruire les salons de Zone Québec."
+    description="Reconstruire la structure de Zone Québec."
 )
 @app_commands.guild_only()
 @app_commands.describe(
@@ -195,148 +230,329 @@ async def reconstruire(
 
     if confirmation != "JE CONFIRME":
         await interaction.response.send_message(
-            'Confirmation incorrecte. Écris JE CONFIRME.',
+            "Confirmation incorrecte.",
             ephemeral=True
         )
         return
 
     guild = interaction.guild
+    bot_member = guild.get_member(bot.user.id)
 
-    if not guild.me.guild_permissions.manage_channels:
+    if not bot_member.guild_permissions.manage_channels:
         await interaction.response.send_message(
-            "Le bot doit avoir la permission Gérer les salons.",
+            "Permission Gérer les salons manquante.",
             ephemeral=True
         )
         return
 
-    if not guild.me.guild_permissions.manage_roles:
+    if not bot_member.guild_permissions.manage_roles:
         await interaction.response.send_message(
-            "Le bot doit avoir la permission Gérer les rôles.",
+            "Permission Gérer les rôles manquante.",
             ephemeral=True
         )
         return
 
     await interaction.response.defer(ephemeral=True)
 
-    # 1. CRÉATION DES RÔLES MANQUANTS
+    try:
 
-    created_roles = 0
+        # -----------------------------
+        # 1. CRÉATION DES RÔLES
+        # -----------------------------
 
-    for name, color in ROLES:
+        roles_created = 0
 
-        if discord.utils.get(guild.roles, name=name) is None:
+        for name, color in ROLES:
 
-            await guild.create_role(
-                name=name,
-                colour=discord.Colour(color),
-                reason="Configuration Zone Québec"
+            existing = discord.utils.get(
+                guild.roles,
+                name=name
             )
 
-            created_roles += 1
+            if existing is None:
 
-    # 2. SUPPRESSION DES SALONS NON VOCAUX
+                await guild.create_role(
+                    name=name,
+                    colour=discord.Colour(color),
+                    reason="Configuration Zone Québec"
+                )
 
-    deleted = 0
+                roles_created += 1
 
-    channels_to_delete = [
-        channel for channel in list(guild.channels)
-        if not isinstance(channel, discord.VoiceChannel)
-    ]
+        # -----------------------------
+        # 2. PROTECTION DES SALONS
+        # -----------------------------
 
-    channels_to_delete.sort(
-        key=lambda channel: isinstance(
-            channel, discord.CategoryChannel
+        protected = get_protected_channels(guild)
+
+        protected_channels = {
+            channel_id: guild.get_channel(channel_id)
+            for channel_id in protected
+        }
+
+        # -----------------------------
+        # 3. CRÉATION DES CATÉGORIES
+        # -----------------------------
+
+        categories = {}
+
+        for category_name in CHANNELS:
+
+            category = await guild.create_category(
+                category_name,
+                reason="Reconstruction Zone Québec"
+            )
+
+            categories[category_name] = category
+
+        # Catégorie privée du personnel
+
+        staff_overwrites = {
+            guild.default_role:
+                discord.PermissionOverwrite(
+                    view_channel=False
+                )
+        }
+
+        for role_name in STAFF_ROLES:
+
+            role = discord.utils.get(
+                guild.roles,
+                name=role_name
+            )
+
+            if role:
+                staff_overwrites[role] = (
+                    discord.PermissionOverwrite(
+                        view_channel=True,
+                        send_messages=True,
+                        read_message_history=True,
+                        connect=True,
+                        speak=True
+                    )
+                )
+
+        staff_category = await guild.create_category(
+            "ADMINISTRATION",
+            overwrites=staff_overwrites,
+            reason="Configuration Zone Québec"
         )
-    )
 
-    for channel in channels_to_delete:
+        categories["ADMINISTRATION"] = staff_category
 
-        await channel.delete(
-            reason="Reconstruction Zone Québec"
+        # -----------------------------
+        # 4. RÉUTILISATION DES SALONS
+        # OBLIGATOIRES COMMUNAUTAIRES
+        # -----------------------------
+
+        reused_channels = set()
+
+        for channel_id, destination in protected.items():
+
+            channel = protected_channels[channel_id]
+
+            if channel is None:
+                continue
+
+            category_name, channel_name = destination
+
+            await channel.edit(
+                name=channel_name,
+                category=categories[category_name],
+                reason="Conservation salon obligatoire"
+            )
+
+            reused_channels.add(channel_id)
+
+        # -----------------------------
+        # 5. SUPPRESSION DES AUTRES
+        # SALONS NON VOCAUX
+        # -----------------------------
+
+        deleted = 0
+        preserved = 0
+        warnings = []
+
+        existing_channels = list(guild.channels)
+
+        # Supprimer les salons avant les catégories
+
+        existing_channels.sort(
+            key=lambda c: isinstance(
+                c, discord.CategoryChannel
+            )
         )
 
-        deleted += 1
+        for channel in existing_channels:
 
-    # 3. CRÉATION DES SALONS PUBLICS
+            # Ne jamais toucher aux salons vocaux
+            if is_voice(channel):
+                continue
 
-    created_channels = 0
+            # Ne jamais supprimer les salons obligatoires
+            if channel.id in protected:
+                continue
 
-    for category_name, channel_names in CHANNELS.items():
+            # Garder les anciennes catégories contenant
+            # encore des salons vocaux
+            if isinstance(channel, discord.CategoryChannel):
 
-        category = await guild.create_category(
-            category_name
-        )
+                has_voice = any(
+                    is_voice(c) and c.category_id == channel.id
+                    for c in guild.channels
+                )
 
-        for channel_name in channel_names:
+                if has_voice:
+                    preserved += 1
+                    continue
+
+                # Ne pas supprimer une catégorie contenant
+                # un salon qui n'a pas pu être supprimé
+                has_remaining = any(
+                    c.category_id == channel.id
+                    for c in guild.channels
+                    if c.id != channel.id
+                )
+
+                if has_remaining:
+                    preserved += 1
+                    continue
+
+            try:
+
+                await channel.delete(
+                    reason="Reconstruction Zone Québec"
+                )
+
+                deleted += 1
+
+            except discord.HTTPException as error:
+
+                if error.code == 50074:
+                    warnings.append(
+                        f"{channel.name} : salon protégé par Discord"
+                    )
+                    preserved += 1
+                    continue
+
+                raise
+
+        # -----------------------------
+        # 6. CRÉATION DES SALONS TEXTUELS
+        # -----------------------------
+
+        created = 0
+
+        for category_name, channel_names in CHANNELS.items():
+
+            for channel_name in channel_names:
+
+                # Les salons obligatoires ont déjà été
+                # déplacés et réutilisés.
+                already_exists = any(
+                    channel.id in reused_channels
+                    and channel.name == channel_name
+                    for channel in guild.channels
+                )
+
+                if already_exists:
+                    continue
+
+                await guild.create_text_channel(
+                    channel_name,
+                    category=categories[category_name],
+                    reason="Configuration Zone Québec"
+                )
+
+                created += 1
+
+        # -----------------------------
+        # 7. SALONS STAFF
+        # -----------------------------
+
+        for channel_name in STAFF_CHANNELS:
 
             await guild.create_text_channel(
                 channel_name,
-                category=category
+                category=staff_category,
+                reason="Configuration Zone Québec"
             )
 
-            created_channels += 1
+            created += 1
 
-    # 4. CATÉGORIE STAFF PRIVÉE
+        # -----------------------------
+        # 8. RAPPORT FINAL
+        # -----------------------------
 
-    overwrites = {
-        guild.default_role: discord.PermissionOverwrite(
-            view_channel=False
-        )
-    }
-
-    for role_name in STAFF_ROLES:
-
-        role = discord.utils.get(
-            guild.roles,
-            name=role_name
+        voice_count = sum(
+            is_voice(c) for c in guild.channels
         )
 
-        if role:
-            overwrites[role] = discord.PermissionOverwrite(
-                view_channel=True,
-                send_messages=True,
-                read_message_history=True
-            )
-
-    staff_category = await guild.create_category(
-        "ADMINISTRATION",
-        overwrites=overwrites
-    )
-
-    for channel_name in STAFF_CHANNELS:
-
-        await guild.create_text_channel(
-            channel_name,
-            category=staff_category
+        report = (
+            "**ZONE QUÉBEC — RECONSTRUCTION TERMINÉE**\n\n"
+            f"Rôles créés : {roles_created}\n"
+            f"Salons supprimés : {deleted}\n"
+            f"Salons créés : {created}\n"
+            f"Salons obligatoires réutilisés : {len(reused_channels)}\n"
+            f"Salons/catégories conservés : {preserved}\n"
+            f"Vocaux conservés : {voice_count}\n\n"
+            "**Rôles supprimés : 0**"
         )
 
-        created_channels += 1
+        if warnings:
+            report += "\n\n**Avertissements :**\n"
+            report += "\n".join(warnings[:10])
 
-    await interaction.followup.send(
-        f"**ZONE QUÉBEC : RECONSTRUCTION TERMINÉE**\n\n"
-        f"Rôles créés : {created_roles}\n"
-        f"Salons supprimés : {deleted}\n"
-        f"Salons créés : {created_channels}\n"
-        f"Vocaux conservés : {len(guild.voice_channels)}\n"
-        f"Rôles existants supprimés : 0",
-        ephemeral=True
-    )
+        await interaction.followup.send(
+            report,
+            ephemeral=True
+        )
+
+    except discord.Forbidden:
+        await interaction.followup.send(
+            "Erreur : le bot n'a pas les permissions nécessaires. "
+            "Vérifie ses permissions et sa position dans la hiérarchie.",
+            ephemeral=True
+        )
+
+    except discord.HTTPException as error:
+        await interaction.followup.send(
+            f"Erreur Discord : {error}\n"
+            "La reconstruction s'est arrêtée. "
+            "Vérifie les salons avant de relancer la commande.",
+            ephemeral=True
+        )
+
+    except Exception as error:
+        await interaction.followup.send(
+            f"Erreur inattendue : {error}",
+            ephemeral=True
+        )
 
 
-# =========================
+# =====================================
 # DÉMARRAGE
-# =========================
+# =====================================
 
 @bot.event
 async def on_ready():
 
-    await bot.tree.sync()
+    try:
+        synced = await bot.tree.sync()
 
-    print(f"Bot connecté : {bot.user}")
-    print("Zone Québec est prêt !")
+        print("--------------------------------")
+        print(f"Connecté : {bot.user}")
+        print(f"Commandes synchronisées : {len(synced)}")
+        print("Zone Québec est prêt !")
+        print("--------------------------------")
+
+    except Exception as error:
+        print(f"Erreur synchronisation : {error}")
 
 
 if not TOKEN:
-    raise RuntimeError("DISCORD_TOKEN est manquant dans .env")
+    raise RuntimeError(
+        "DISCORD_TOKEN est absent du fichier .env"
+    )
 
 bot.run(TOKEN)
