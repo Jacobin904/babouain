@@ -23,7 +23,6 @@ const client = new Client({
 });
 
 // Garde en mémoire les messages de règlements pour les mettre à jour
-// Format : guildId -> { channelId, messageId, signature }
 const reglementMessages = new Map();
 
 // ================================
@@ -56,13 +55,13 @@ function getGuildIcon(guild) {
 }
 
 // ================================
-// PAGE PRINCIPALE (Components V2)
+// PAGE PRINCIPALE
 // ================================
 function createMainPage(guild) {
     return new ContainerBuilder()
         .setAccentColor(0x5865F2)
 
-        // SECTION = texte à gauche + LOGO EN HAUT À DROITE
+        // SECTION = titre + logo en haut à droite
         .addSectionComponents(
             new SectionBuilder()
                 .addTextDisplayComponents(
@@ -77,26 +76,26 @@ function createMainPage(guild) {
                 )
         )
 
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-        )
-
+        // Contenu principal
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `Afin de garantir une communauté agréable, organisée et respectueuse, chaque membre doit prendre connaissance des règlements et les respecter.\n\n` +
                 `**Informations du serveur**\n` +
                 `- Nom : ${guild.name}\n` +
                 `- Membres : ${guild.memberCount}\n` +
+                `- Créé le : ${guild.createdAt.toLocaleDateString('fr-CA')}\n` +
+                `- Boosts : ${guild.premiumSubscriptionCount || 0}\n` +
                 `- Règlements applicables : Discord, Roblox et ER:LC\n\n` +
                 `Veuillez sélectionner la catégorie de règlements que vous souhaitez consulter.`
             )
         )
 
+        // Séparateur JUSTE AVANT les boutons
         .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
         )
 
-        // BOUTONS À L'INTÉRIEUR DU CONTAINER
+        // Boutons
         .addActionRowComponents(
             new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
@@ -110,9 +109,10 @@ function createMainPage(guild) {
             )
         )
 
+        // Crédits à la fin
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                '-# En restant sur ce serveur, vous acceptez de respecter les règlements applicables.'
+                `-# En restant sur ce serveur, vous acceptez de respecter les règlements applicables.\n-# Développé par **jacobin904**`
             )
         );
 }
@@ -138,40 +138,47 @@ function createDiscordRules(guild) {
                 )
         )
 
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-        )
-
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
+                `Voici les règles applicables à tous les membres du serveur.\n\n` +
                 `**1. Respect et comportement**\n` +
-                `- Le respect envers tous les membres est obligatoire.\n` +
+                `- Le respect envers tous les membres est obligatoire, peu importe le contexte.\n` +
                 `- Les insultes, menaces, discriminations et provocations abusives sont interdites.\n` +
-                `- Le harcèlement et les comportements toxiques ne sont pas tolérés.\n\n` +
+                `- Le harcèlement, le doxxing et les comportements toxiques ne sont pas tolérés.\n` +
+                `- Les conflits personnels doivent être réglés en message privé, pas dans les salons publics.\n\n` +
                 `**2. Messages et communications**\n` +
-                `- Le spam, le flood et les mentions abusives sont interdits.\n` +
-                `- La publicité sans autorisation du personnel est interdite.\n` +
-                `- Utilisez les salons selon leur fonction.\n` +
-                `- Les contenus inappropriés ou NSFW sont interdits.\n\n` +
+                `- Le spam, le flood, les caps lock excessifs et les mentions abusives sont interdits.\n` +
+                `- La publicité sans autorisation du personnel est interdite (serveurs, liens, réseaux sociaux).\n` +
+                `- Utilisez les salons selon leur fonction (pas de hors-sujet dans les salons dédiés).\n` +
+                `- Les contenus inappropriés, NSFW, violents ou choquants sont interdits.\n` +
+                `- Les messages vocaux excessifs ou perturbateurs sont interdits.\n\n` +
                 `**3. Confidentialité et sécurité**\n` +
                 `- Le partage d'informations personnelles sans consentement est interdit.\n` +
                 `- Les tentatives d'arnaque, de phishing et de piratage sont interdites.\n` +
-                `- Le partage de liens dangereux est interdit.\n\n` +
+                `- Le partage de liens dangereux ou malveillants est interdit.\n` +
+                `- Ne partagez jamais vos identifiants ou codes de vérification.\n\n` +
                 `**4. Comptes et plateformes**\n` +
                 `- Le respect des Conditions d'utilisation de Discord est obligatoire.\n` +
-                `- Toute tentative de contournement d'une sanction est interdite.\n` +
-                `- L'usurpation d'identité est interdite.\n\n` +
+                `- Toute tentative de contournement d'une sanction (bannissement, mute) est interdite.\n` +
+                `- L'usurpation d'identité (membres ou staff) est interdite.\n` +
+                `- Les comptes alternatifs (alts) utilisés pour contourner les sanctions sont interdits.\n\n` +
                 `**5. Personnel et modération**\n` +
-                `- Les consignes du personnel doivent être respectées.\n` +
-                `- Toute contestation doit être faite dans les espaces prévus.\n` +
-                `- L'abus des systèmes de signalement est interdit.\n\n` +
-                `**Sanctions possibles**\n` +
-                `Avertissement, mute, expulsion ou bannissement selon la gravité et la répétition des infractions.`
+                `- Les consignes du personnel doivent être respectées en tout temps.\n` +
+                `- Toute contestation doit être faite dans les espaces prévus (ticket, salon dédié).\n` +
+                `- L'abus des systèmes de signalement est interdit.\n` +
+                `- Ne prétendez pas être un membre du staff si vous ne l'êtes pas.\n\n` +
+                `**6. Sanctions possibles**\n` +
+                `- Avertissement verbal ou écrit\n` +
+                `- Mute temporaire ou permanent\n` +
+                `- Expulsion du serveur\n` +
+                `- Bannissement temporaire ou permanent\n` +
+                `- La gravité de la sanction dépend de la nature et de la répétition des infractions.`
             )
         )
 
+        // Séparateur JUSTE AVANT le bouton retour
         .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
         )
 
         .addActionRowComponents(
@@ -180,6 +187,13 @@ function createDiscordRules(guild) {
                     .setCustomId('retour_reglements')
                     .setLabel('Retour')
                     .setStyle(ButtonStyle.Secondary)
+            )
+        )
+
+        // Crédits
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `-# Développé par **jacobin904**`
             )
         );
 }
@@ -205,40 +219,52 @@ function createRobloxRules(guild) {
                 )
         )
 
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-        )
-
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
+                `Ces règles encadrent toutes les activités de jeu et les scènes de roleplay.\n\n` +
                 `**1. Respect des règles Roblox**\n` +
                 `- Le respect des Conditions d'utilisation de Roblox est obligatoire.\n` +
                 `- Les exploits, cheats, scripts de triche et logiciels de manipulation sont interdits.\n` +
-                `- Toute tentative de contourner les sanctions est interdite.\n\n` +
+                `- Toute tentative de contourner les sanctions est interdite.\n` +
+                `- L'utilisation de bugs ou de glitches pour gagner un avantage est interdite.\n\n` +
                 `**2. Qualité du roleplay**\n` +
-                `- Le FailRP est interdit : vos actions doivent rester réalistes.\n` +
-                `- Le RDM est interdit : ne tuez pas un joueur sans raison RP valable.\n` +
-                `- Le VDM est interdit : ne renversez pas volontairement des joueurs sans raison RP valable.\n` +
+                `- Le FailRP est interdit : vos actions doivent rester réalistes et cohérentes.\n` +
+                `- Le RDM (Random Death Match) est interdit : ne tuez pas un joueur sans raison RP valable.\n` +
+                `- Le VDM (Vehicle Death Match) est interdit : ne renversez pas volontairement des joueurs sans raison RP.\n` +
                 `- Le Powergaming est interdit : ne forcez pas des actions irréalistes sur les autres joueurs.\n` +
-                `- Le Metagaming est interdit : n'utilisez pas des informations obtenues hors RP.\n\n` +
+                `- Le Metagaming est interdit : n'utilisez pas des informations obtenues hors RP (Discord, stream, etc.).\n` +
+                `- Le Combat Logging est interdit : ne quittez pas une scène pour éviter ses conséquences.\n` +
+                `- Respectez la valeur de la vie de votre personnage (Value of Life).\n\n` +
                 `**3. Comportement en jeu**\n` +
-                `- Respectez les autres joueurs et leurs scènes RP.\n` +
-                `- Respectez les consignes du personnel en jeu.\n` +
+                `- Respectez les autres joueurs et leurs scènes RP en cours.\n` +
+                `- Respectez les consignes du personnel en jeu (policiers, médecins, etc.).\n` +
                 `- Ne perturbez pas volontairement les interventions et les scènes RP.\n` +
-                `- Le combat logging est interdit : ne quittez pas une scène pour éviter ses conséquences.\n` +
-                `- Respectez la valeur de la vie de votre personnage.\n\n` +
+                `- Les crimes doivent avoir une raison RP valable (pas de crimes gratuits).\n` +
+                `- Les otages doivent être traités avec respect (pas de torture excessive).\n` +
+                `- Les poursuites policières doivent être réalistes et sécuritaires.\n\n` +
                 `**4. Conduite et véhicules**\n` +
-                `- La conduite doit être cohérente et réaliste.\n` +
+                `- La conduite doit être cohérente et réaliste (respectez le code de la route RP).\n` +
                 `- Les collisions volontaires et dangereuses sans raison RP sont interdites.\n` +
-                `- L'utilisation abusive des véhicules d'urgence est interdite.\n\n` +
-                `**5. Sanctions en jeu**\n` +
-                `Selon la gravité : avertissement, exclusion de la session ou bannissement du serveur de jeu.\n\n` +
-                `**Important :** les Conditions d'utilisation de Roblox et les règles officielles d'ER:LC restent prioritaires.`
+                `- L'utilisation abusive des véhicules d'urgence est interdite.\n` +
+                `- Les véhicules ne doivent pas être utilisés pour bloquer volontairement des zones.\n` +
+                `- Les courses illégales doivent être organisées et sécuritaires.\n\n` +
+                `**5. Communication et langues**\n` +
+                `- La communication en jeu doit se faire en français ou en anglais (selon le serveur).\n` +
+                `- Le mic spam et les sons perturbateurs sont interdits.\n` +
+                `- Utilisez le radio RP de manière réaliste (pas de blagues hors contexte).\n\n` +
+                `**6. Sanctions en jeu**\n` +
+                `- Avertissement verbal\n` +
+                `- Exclusion temporaire de la session\n` +
+                `- Bannissement temporaire du serveur de jeu\n` +
+                `- Bannissement permanent selon la gravité\n` +
+                `- La gravité de la sanction dépend de la nature et de la répétition des infractions.\n\n` +
+                `**Important :** les Conditions d'utilisation de Roblox et les règles officielles d'ER:LC restent prioritaires sur les règles du serveur.`
             )
         )
 
+        // Séparateur JUSTE AVANT le bouton retour
         .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
         )
 
         .addActionRowComponents(
@@ -248,12 +274,18 @@ function createRobloxRules(guild) {
                     .setLabel('Retour')
                     .setStyle(ButtonStyle.Secondary)
             )
+        )
+
+        // Crédits
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `-# Développé par **jacobin904**`
+            )
         );
 }
 
 // ================================
 // MISE À JOUR AUTO DU MESSAGE PUBLIC
-// (seulement si les infos du serveur changent)
 // ================================
 async function refreshAllMessages() {
     for (const [guildId, data] of reglementMessages) {
@@ -261,7 +293,6 @@ async function refreshAllMessages() {
             const guild = await client.guilds.fetch(guildId);
             const signature = getGuildSignature(guild);
 
-            // Aucun changement = on ne touche pas au message
             if (signature === data.signature) continue;
 
             const channel = await client.channels.fetch(data.channelId);
@@ -274,7 +305,6 @@ async function refreshAllMessages() {
 
             data.signature = signature;
         } catch (error) {
-            // Message supprimé, salon inaccessible, bot retiré, etc.
             if (error.code === 10008 || error.code === 10003 || error.code === 50001) {
                 reglementMessages.delete(guildId);
             } else {
@@ -300,7 +330,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 });
             }
 
-            // Réponse fantôme : on accuse réception puis on l'efface => aucune trace visible
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const message = await interaction.channel.send({
@@ -337,8 +366,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 break;
 
             case 'retour_reglements':
-                // deferUpdate rattache l'interaction au message éphémère,
-                // ensuite deleteReply le supprime pour vrai.
                 await interaction.deferUpdate();
                 await interaction.deleteReply();
                 break;
