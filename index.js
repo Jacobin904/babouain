@@ -22,8 +22,8 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
-// Garde en mémoire les messages de règlements pour les mettre à jour
-const reglementMessages = new Map();
+// Garde en mémoire les messages d'informations pour les mettre à jour
+const infoMessages = new Map();
 
 // ================================
 // ENREGISTREMENT DE LA COMMANDE
@@ -32,12 +32,12 @@ client.once(Events.ClientReady, async (bot) => {
     console.log(`Connecté en tant que ${bot.user.tag}`);
 
     const command = new SlashCommandBuilder()
-        .setName('reglements')
-        .setDescription('Afficher les règlements du serveur dans ce salon.')
+        .setName('informations')
+        .setDescription('Afficher les informations du serveur dans ce salon.')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
     await client.application.commands.set([command]);
-    console.log('Commande /reglements enregistrée (Administrateur seulement) !');
+    console.log('Commande /informations enregistrée (Administrateur seulement) !');
 
     // Vérifie périodiquement si les infos du serveur ont changé
     setInterval(refreshAllMessages, 5 * 60 * 1000);
@@ -47,7 +47,7 @@ client.once(Events.ClientReady, async (bot) => {
 // INFOS DU SERVEUR
 // ================================
 function getGuildSignature(guild) {
-    return `${guild.name}|${guild.icon}|${guild.memberCount}`;
+    return `${guild.name}|${guild.icon}|${guild.memberCount}|${guild.premiumSubscriptionCount}|${guild.description}`;
 }
 
 function getGuildIcon(guild) {
@@ -58,6 +58,13 @@ function getGuildIcon(guild) {
 // PAGE PRINCIPALE
 // ================================
 function createMainPage(guild) {
+    const owner = guild.ownerId ? `<@${guild.ownerId}>` : 'Non disponible';
+    const createdDate = guild.createdAt.toLocaleDateString('fr-CA', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+
     return new ContainerBuilder()
         .setAccentColor(0x5865F2)
 
@@ -66,7 +73,7 @@ function createMainPage(guild) {
             new SectionBuilder()
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `# Règlements du serveur\nBienvenue sur **${guild.name}** !`
+                        `# Bienvenue sur ${guild.name} !`
                     )
                 )
                 .setThumbnailAccessory(
@@ -76,17 +83,28 @@ function createMainPage(guild) {
                 )
         )
 
-        // Contenu principal
+        // Gros paragraphe de bienvenue
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `Afin de garantir une communauté agréable, organisée et respectueuse, chaque membre doit prendre connaissance des règlements et les respecter.\n\n` +
-                `**Informations du serveur**\n` +
-                `- Nom : ${guild.name}\n` +
-                `- Membres : ${guild.memberCount}\n` +
-                `- Créé le : ${guild.createdAt.toLocaleDateString('fr-CA')}\n` +
-                `- Boosts : ${guild.premiumSubscriptionCount || 0}\n` +
-                `- Règlements applicables : Discord, Roblox et ER:LC\n\n` +
-                `Veuillez sélectionner la catégorie de règlements que vous souhaitez consulter.`
+                `Nous sommes ravis de vous accueillir dans notre communauté ! Ce serveur a été créé pour rassembler des passionnés de roleplay, de jeux vidéo et de discussions enrichissantes. Que vous soyez nouveau ici ou un membre de longue date, nous espérons que vous trouverez ici un espace accueillant, respectueux et divertissant.\n\n` +
+                `Notre communauté repose sur des valeurs fondamentales : le respect mutuel, l'entraide et le plaisir partagé. Nous encourageons tous les membres à participer activement, à partager leurs expériences et à contribuer positivement à l'ambiance du serveur. N'hésitez pas à explorer les différents salons, à rejoindre les activités organisées et à vous lier d'amitié avec les autres membres.\n\n` +
+                `Avant de commencer, nous vous invitons à prendre connaissance des règlements du serveur afin de garantir une expérience agréable pour tous. Le non-respect de ces règles peut entraîner des sanctions allant de l'avertissement au bannissement, selon la gravité des infractions.`
+            )
+        )
+
+        // Infos du serveur
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**📋 Informations du serveur**\n` +
+                `- **Nom :** ${guild.name}\n` +
+                `- **Propriétaire :** ${owner}\n` +
+                `- **Date de création :** ${createdDate}\n` +
+                `- **Nombre de membres :** ${guild.memberCount}\n` +
+                `- **Nombre de boosts :** ${guild.premiumSubscriptionCount || 0}\n` +
+                `- **Niveau de boost :** ${guild.premiumTier || 0}\n` +
+                `${guild.description ? `- **Description :** ${guild.description}\n` : ''}` +
+                `- **Règlements applicables :** Discord, Roblox et ER:LC\n\n` +
+                `Consultez les règlements en cliquant sur les boutons ci-dessous.`
             )
         )
 
@@ -112,7 +130,7 @@ function createMainPage(guild) {
         // Crédits à la fin
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `-# En restant sur ce serveur, vous acceptez de respecter les règlements applicables.\n-# Développé par **jacobin904**`
+                `-# Développé par **jacobin904**`
             )
         );
 }
@@ -288,7 +306,7 @@ function createRobloxRules(guild) {
 // MISE À JOUR AUTO DU MESSAGE PUBLIC
 // ================================
 async function refreshAllMessages() {
-    for (const [guildId, data] of reglementMessages) {
+    for (const [guildId, data] of infoMessages) {
         try {
             const guild = await client.guilds.fetch(guildId);
             const signature = getGuildSignature(guild);
@@ -306,7 +324,7 @@ async function refreshAllMessages() {
             data.signature = signature;
         } catch (error) {
             if (error.code === 10008 || error.code === 10003 || error.code === 50001) {
-                reglementMessages.delete(guildId);
+                infoMessages.delete(guildId);
             } else {
                 console.error(`Mise à jour échouée pour ${guildId} :`, error.message);
             }
@@ -321,7 +339,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     try {
         // -------- COMMANDE --------
         if (interaction.isChatInputCommand()) {
-            if (interaction.commandName !== 'reglements') return;
+            if (interaction.commandName !== 'informations') return;
 
             if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
                 return interaction.reply({
@@ -337,7 +355,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 flags: MessageFlags.IsComponentsV2
             });
 
-            reglementMessages.set(interaction.guildId, {
+            infoMessages.set(interaction.guildId, {
                 channelId: message.channelId,
                 messageId: message.id,
                 signature: getGuildSignature(interaction.guild)
