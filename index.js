@@ -22,7 +22,6 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
-// Garde en mémoire les messages d'informations pour les mettre à jour
 const infoMessages = new Map();
 
 // ================================
@@ -39,7 +38,6 @@ client.once(Events.ClientReady, async (bot) => {
     await client.application.commands.set([command]);
     console.log('Commande /informations enregistrée (Administrateur seulement) !');
 
-    // Vérifie périodiquement si les infos du serveur ont changé
     setInterval(refreshAllMessages, 5 * 60 * 1000);
 });
 
@@ -58,17 +56,9 @@ function getGuildIcon(guild) {
 // PAGE PRINCIPALE
 // ================================
 function createMainPage(guild) {
-    const owner = guild.ownerId ? `<@${guild.ownerId}>` : 'Non disponible';
-    const createdDate = guild.createdAt.toLocaleDateString('fr-CA', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-
     return new ContainerBuilder()
         .setAccentColor(0x5865F2)
 
-        // SECTION = titre + logo en haut à droite
         .addSectionComponents(
             new SectionBuilder()
                 .addTextDisplayComponents(
@@ -83,7 +73,6 @@ function createMainPage(guild) {
                 )
         )
 
-        // Gros paragraphe de bienvenue
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `Nous sommes ravis de vous accueillir dans notre communauté ! Ce serveur a été créé pour rassembler des passionnés de roleplay, de jeux vidéo et de discussions enrichissantes. Que vous soyez nouveau ici ou un membre de longue date, nous espérons que vous trouverez ici un espace accueillant, respectueux et divertissant.\n\n` +
@@ -92,28 +81,10 @@ function createMainPage(guild) {
             )
         )
 
-        // Infos du serveur
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `**📋 Informations du serveur**\n` +
-                `- **Nom :** ${guild.name}\n` +
-                `- **Propriétaire :** ${owner}\n` +
-                `- **Date de création :** ${createdDate}\n` +
-                `- **Nombre de membres :** ${guild.memberCount}\n` +
-                `- **Nombre de boosts :** ${guild.premiumSubscriptionCount || 0}\n` +
-                `- **Niveau de boost :** ${guild.premiumTier || 0}\n` +
-                `${guild.description ? `- **Description :** ${guild.description}\n` : ''}` +
-                `- **Règlements applicables :** Discord, Roblox et ER:LC\n\n` +
-                `Consultez les règlements en cliquant sur les boutons ci-dessous.`
-            )
-        )
-
-        // Séparateur JUSTE AVANT les boutons
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
         )
 
-        // Boutons
         .addActionRowComponents(
             new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
@@ -123,11 +94,75 @@ function createMainPage(guild) {
                 new ButtonBuilder()
                     .setCustomId('regles_roblox')
                     .setLabel('Règlements Roblox / ERLC')
-                    .setStyle(ButtonStyle.Success)
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('infos_serveur')
+                    .setLabel('Infos du serveur')
+                    .setStyle(ButtonStyle.Secondary)
             )
         )
 
-        // Crédits à la fin
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `-# Développé par **jacobin904**`
+            )
+        );
+}
+
+// ================================
+// INFOS DU SERVEUR (bouton)
+// ================================
+function createServerInfo(guild) {
+    const owner = guild.ownerId ? `<@${guild.ownerId}>` : 'Non disponible';
+    const createdDate = guild.createdAt.toLocaleDateString('fr-CA', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+
+    return new ContainerBuilder()
+        .setAccentColor(0x5865F2)
+
+        .addSectionComponents(
+            new SectionBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `# Informations du serveur\n${guild.name}`
+                    )
+                )
+                .setThumbnailAccessory(
+                    new ThumbnailBuilder()
+                        .setURL(getGuildIcon(guild))
+                        .setDescription(`Logo de ${guild.name}`)
+                )
+        )
+
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**Nom :** ${guild.name}\n` +
+                `**Propriétaire :** ${owner}\n` +
+                `**Date de création :** ${createdDate}\n` +
+                `**Nombre de membres :** ${guild.memberCount}\n` +
+                `**Nombre de boosts :** ${guild.premiumSubscriptionCount || 0}\n` +
+                `**Niveau de boost :** ${guild.premiumTier || 0}\n` +
+                `${guild.description ? `**Description :** ${guild.description}\n` : ''}` +
+                `**Règlements applicables :** Discord, Roblox et ER:LC`
+            )
+        )
+
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+        )
+
+        .addActionRowComponents(
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('retour_infos')
+                    .setLabel('Retour')
+                    .setStyle(ButtonStyle.Secondary)
+            )
+        )
+
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `-# Développé par **jacobin904**`
@@ -194,7 +229,6 @@ function createDiscordRules(guild) {
             )
         )
 
-        // Séparateur JUSTE AVANT le bouton retour
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
         )
@@ -208,7 +242,6 @@ function createDiscordRules(guild) {
             )
         )
 
-        // Crédits
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `-# Développé par **jacobin904**`
@@ -280,7 +313,6 @@ function createRobloxRules(guild) {
             )
         )
 
-        // Séparateur JUSTE AVANT le bouton retour
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
         )
@@ -294,7 +326,6 @@ function createRobloxRules(guild) {
             )
         )
 
-        // Crédits
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `-# Développé par **jacobin904**`
@@ -383,7 +414,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 });
                 break;
 
+            case 'infos_serveur':
+                await interaction.reply({
+                    components: [createServerInfo(interaction.guild)],
+                    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+                });
+                break;
+
             case 'retour_reglements':
+            case 'retour_infos':
                 await interaction.deferUpdate();
                 await interaction.deleteReply();
                 break;
