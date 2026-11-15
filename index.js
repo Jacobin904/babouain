@@ -5,6 +5,7 @@ const {
     GatewayIntentBits,
     Events,
     MessageFlags,
+    PermissionFlagsBits, // Ajouté pour la permission Administrateur
     SlashCommandBuilder,
     ContainerBuilder,
     TextDisplayBuilder,
@@ -18,7 +19,7 @@ const {
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers // Ajouté pour garantir un nombre de membres à jour
+        GatewayIntentBits.GuildMembers
     ]
 });
 
@@ -30,18 +31,20 @@ client.once(Events.ClientReady, async (bot) => {
 
     const command = new SlashCommandBuilder()
         .setName('reglements')
-        .setDescription('Consulter les règlements du serveur.');
+        .setDescription('Affiche les règlements du serveur dans le salon.')
+        // Cette ligne rend la commande invisible et inutilisable pour les non-administrateurs
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
     await client.application.commands.set([command]);
-    console.log('Commande /reglements enregistrée !');
+    console.log('Commande /reglements enregistrée (Admin seulement) !');
 });
 
 // ================================
 // PAGE PRINCIPALE
 // ================================
 function createMainPage(guild) {
-    // Récupération du logo du serveur (ou un avatar par défaut si aucun logo)
-    const iconURL = guild.iconURL({ dynamic: true, size: 256 }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+    // Récupère le logo en haute qualité (512px). Discord affichera ça comme une vraie image, pas un lien.
+    const iconURL = guild.iconURL({ dynamic: true, size: 512 }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
     const container = new ContainerBuilder()
         .setAccentColor(0x5865F2)
@@ -143,12 +146,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // 1. Commande /reglements
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'reglements') {
+            
+            // Sécurité supplémentaire : vérifie que l'utilisateur est bien admin
+            if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                return interaction.reply({ 
+                    content: '❌ Tu dois avoir la permission **Administrateur** pour utiliser cette commande.', 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+
             const container = createMainPage(interaction.guild);
 
-            // MessageFlags.Ephemeral rend la commande invisible pour les autres
-            await interaction.reply({
+            // ÉTAPE A : On envoie le message PUBLIC dans le salon (tout le monde le voit)
+            await interaction.channel.send({
                 components: [container],
-                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+                flags: MessageFlags.IsComponentsV2
+            });
+
+            // ÉTAPE B : On confirme à l'admin de manière ÉPHÉMÈRE (lui seul voit ce message)
+            await interaction.reply({
+                content: '✅ Les règlements ont été affichés avec succès dans ce salon.',
+                flags: MessageFlags.Ephemeral
             });
         }
         return;
@@ -157,28 +175,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // 2. Gestion des boutons
     if (!interaction.isButton()) return;
 
-    let container;
-
     switch (interaction.customId) {
         case 'regles_discord':
-            container = createDiscordRules();
+            // Ouvre une fenêtre éphémère avec les règles Discord
+            await interaction.reply({
+                components: [createDiscordRules()],
+                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+            });
             break;
+
         case 'regles_roblox':
-            container = createRobloxRules();
+            // Ouvre une fenêtre éphémère avec les règles Roblox
+            await interaction.reply({
+                components: [createRobloxRules()],
+                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+            });
             break;
+
         case 'retour_reglements':
-            // On régénère la page principale avec les infos à jour du serveur
-            container = createMainPage(interaction.guild);
+            // SUPPRIME le message éphémère actuel au lieu d'en créer un nouveau
+            await interaction.message.delete();
             break;
+
         default:
             return;
     }
-
-    // interaction.reply avec Ephemeral crée un NOUVEAU message privé au lieu de modifier l'ancien
-    await interaction.reply({
-        components: [container],
-        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
-    });
 });
 
 // ================================
